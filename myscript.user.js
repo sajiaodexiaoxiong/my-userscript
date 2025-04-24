@@ -20,7 +20,7 @@
     const DELAY_TIME = 2000; // 2秒等待，load 2秒
     const TRACKING_INPUT_SELECTOR = '#tracking-input';
     const SEARCH_BUTTON_SELECTOR = '.tracking-btn-srch';
-
+        safdadfsa
     // 状态管理
     let allTrackingNumbers = [];   // 所有跟踪号
     let pendingTrackingNumbers = []; // 待处理跟踪号

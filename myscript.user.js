@@ -8,6 +8,8 @@
 // @grant        GM_getValue
 // @grant        GM_download
 // @run-at       document-end
+// @updateURL    https://github.com/sajiaodexiaoxiong/my-userscript/edit/main/myscript.user.js
+// @downloadURL  https://github.com/sajiaodexiaoxiong/my-userscript/edit/main/myscript.user.js
 // ==/UserScript==
 
 (function() {

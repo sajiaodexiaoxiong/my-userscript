@@ -1,20 +1,20 @@
 // ==UserScript==
 // @name         自动批量查询(2秒等待)1.3加强版
 // @namespace    http://tampermonkey.net/
-// @version      1.31
+// @version      1.30
 // @description  每次查询后等待2秒
 // @match        https://tools.usps.com/go/*
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_download
 // @run-at       document-end
-// @updateURL    https://github.com/sajiaodexiaoxiong/my-userscript/edit/main/myscript.user.js
-// @downloadURL  https://github.com/sajiaodexiaoxiong/my-userscript/edit/main/myscript.user.js
+// @updateURL    https://github.com/sajiaodexiaoxiong/my-userscript/raw/refs/heads/main/myscript.user.js
+// @downloadURL  https://github.com/sajiaodexiaoxiong/my-userscript/raw/refs/heads/main/myscript.user.js
 // ==/UserScript==
 
 (function() {
     'use strict';
-    sdafaf
+    
     // 配置
     const BATCH_SIZE = 30;
     const DELAY_TIME = 2000; // 2秒等待，load 2秒

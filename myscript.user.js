@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         自动批量查询(2秒等待)1.3加强版
+// @name         自动批量查询(2秒等待)加强版
 // @namespace    http://tampermonkey.net/
-// @version      1.4
+// @version      0.1
 // @description  每次查询后等待2秒
 // @match        https://tools.usps.com/go/*
 // @grant        GM_setValue
@@ -14,7 +14,7 @@
 
 (function() {
     'use strict';
-    123
+    
     // 配置
     const BATCH_SIZE = 30;
     const DELAY_TIME = 2000; // 2秒等待，load 2秒
@@ -43,7 +43,7 @@
         `;
 
         ui.innerHTML = `
-            <h3 style="margin-top:0;color:#d04349;">自动查询 v1.3加强版</h3>
+            <h3 style="margin-top:0;color:#d04349;">自动查询 加强版</h3>
             <input type="file" id="usps-auto-file" accept=".txt" style="width:100%;margin-bottom:10px;">
             <div style="display:flex;gap:10px;margin-bottom:10px;">
                 <button id="usps-auto-start" style="flex:1;padding:8px;background:#d04349;color:white;border:none;border-radius:4px;">开始</button>

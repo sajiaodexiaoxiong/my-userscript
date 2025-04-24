@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         自动批量查询(2秒等待)加强版
+// @name         自动批量查询(2秒等待)威力加强版
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.2
 // @description  每次查询后等待2秒
 // @match        https://tools.usps.com/go/*
 // @grant        GM_setValue
@@ -14,7 +14,7 @@
 
 (function() {
     'use strict';
-    
+
     // 配置
     const BATCH_SIZE = 30;
     const DELAY_TIME = 2000; // 2秒等待，load 2秒
@@ -43,7 +43,7 @@
         `;
 
         ui.innerHTML = `
-            <h3 style="margin-top:0;color:#d04349;">自动查询 加强版</h3>
+            <h3 style="margin-top:0;color:#d04349;">自动查询 威力加强版</h3>
             <input type="file" id="usps-auto-file" accept=".txt" style="width:100%;margin-bottom:10px;">
             <div style="display:flex;gap:10px;margin-bottom:10px;">
                 <button id="usps-auto-start" style="flex:1;padding:8px;background:#d04349;color:white;border:none;border-radius:4px;">开始</button>
@@ -81,6 +81,7 @@
             document.getElementById('usps-auto-start').disabled = false;
         }
         isProcessing = GM_getValue('usps_auto_processing', false);
+
     }
 
     // 处理文件上传
@@ -113,6 +114,8 @@
 
     // 开始处理
     function startProcessing() {
+        const currentUrl = window.location.href;
+        GM_setValue('lastUrl', currentUrl);
         isProcessing = GM_getValue('usps_auto_processing', false);
         if (!isProcessing || !fileUploaded) return;
 
@@ -199,6 +202,8 @@
         // 更新计数，放在这里确保点击之前更新
         updateCounts();  // 先更新计数信息
 
+        const currentUrl = window.location.href;
+        GM_setValue('lastUrl', currentUrl);
         // 提交查询
         button.click();
     }
@@ -283,56 +288,72 @@
         setTimeout(restoreState, DELAY_TIME);
     });
 
-// 恢复状态
-async function restoreState() {
-    fileUploaded = GM_getValue('usps_auto_file_uploaded', false);
-    if (fileUploaded) {
-        const elementsLoaded = await waitForAllElements();
-        if (elementsLoaded) {
-            GM_setValue('usps_firstStart', false);
-            firstStart = GM_getValue('usps_firstStart', true);
-            allTrackingNumbers = GM_getValue('usps_auto_all_numbers', []);
-            pendingTrackingNumbers = GM_getValue('usps_auto_pending_numbers', []);
-            errorTrackingNumbers = GM_getValue('usps_error_tracking_numbers', []);
-            updateStatus('已恢复 ' + allTrackingNumbers.length + ' 个跟踪号');
-            document.getElementById('usps-auto-start').disabled = false;
-            document.getElementById('usps-auto-download').disabled = false;
-            processNextBatch();
-        } else {
-            console.log("页面元素加载失败...");
+
+
+    // 检查服务异常
+    function checkServiceError() {
+        const currentUrl = window.location.href;
+        return currentUrl.includes('server_responses') || currentUrl.includes('anyapp_outage_apology');
+    }
+
+    // 恢复状态
+    async function restoreState() {
+
+        if(checkServiceError())
+        {
+            console.log("服务器查询异常...");
+            const currentUrl = GM_getValue('usps_auto_pending_numbers', 'https://www.baidu.com');;
+            location.replace(currentUrl);
+        }
+
+        fileUploaded = GM_getValue('usps_auto_file_uploaded', false);
+        if (fileUploaded) {
+            const elementsLoaded = await waitForAllElements();
+            if (elementsLoaded) {
+                GM_setValue('usps_firstStart', false);
+                firstStart = GM_getValue('usps_firstStart', true);
+                allTrackingNumbers = GM_getValue('usps_auto_all_numbers', []);
+                pendingTrackingNumbers = GM_getValue('usps_auto_pending_numbers', []);
+                errorTrackingNumbers = GM_getValue('usps_error_tracking_numbers', []);
+                updateStatus('已恢复 ' + allTrackingNumbers.length + ' 个跟踪号');
+                document.getElementById('usps-auto-start').disabled = false;
+                document.getElementById('usps-auto-download').disabled = false;
+                processNextBatch();
+            } else {
+                console.log("页面元素加载失败...");
+            }
         }
     }
-}
 
-// 等待页面元素加载完毕
-async function waitForAllElements(retries = 3) {
-    const uiContainer = document.getElementById('usps-auto-ui');
-    const fileInput = document.getElementById('usps-auto-file');
-    const startButton = document.getElementById('usps-auto-start');
-    const resetButton = document.getElementById('usps-auto-reset');
-    const downloadButton = document.getElementById('usps-auto-download');
-    const status = document.getElementById('usps-auto-status');
-    const pendingCount = document.getElementById('usps-pending-count');
-    const processedCount = document.getElementById('usps-processed-count');
-    const errorCount = document.getElementById('usps-error-count');
-    const progressBar = document.getElementById('usps-auto-progress');
-    const input = document.querySelector(TRACKING_INPUT_SELECTOR);
-    const button = document.querySelector(SEARCH_BUTTON_SELECTOR);
+    // 等待页面元素加载完毕
+    async function waitForAllElements(retries = 3) {
+        const uiContainer = document.getElementById('usps-auto-ui');
+        const fileInput = document.getElementById('usps-auto-file');
+        const startButton = document.getElementById('usps-auto-start');
+        const resetButton = document.getElementById('usps-auto-reset');
+        const downloadButton = document.getElementById('usps-auto-download');
+        const status = document.getElementById('usps-auto-status');
+        const pendingCount = document.getElementById('usps-pending-count');
+        const processedCount = document.getElementById('usps-processed-count');
+        const errorCount = document.getElementById('usps-error-count');
+        const progressBar = document.getElementById('usps-auto-progress');
+        const input = document.querySelector(TRACKING_INPUT_SELECTOR);
+        const button = document.querySelector(SEARCH_BUTTON_SELECTOR);
 
-    const allElementsLoaded = input && button && uiContainer && fileInput && startButton && resetButton && downloadButton &&
-                              status && pendingCount && processedCount && errorCount && progressBar;
+        const allElementsLoaded = input && button && uiContainer && fileInput && startButton && resetButton && downloadButton &&
+              status && pendingCount && processedCount && errorCount && progressBar;
 
-    if (!allElementsLoaded && retries > 0) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        return await waitForAllElements(retries - 1);
+        if (!allElementsLoaded && retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return await waitForAllElements(retries - 1);
+        }
+
+        if (!allElementsLoaded) {
+            console.log("无法加载所有元素，刷新页面...");
+            location.replace(location.href);
+            return false;
+        }
+
+        return true;
     }
-
-    if (!allElementsLoaded) {
-        console.log("无法加载所有元素，刷新页面...");
-        location.replace(location.href);
-        return false;
-    }
-
-    return true;
-}
 })();

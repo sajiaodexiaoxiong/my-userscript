@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         自动批量查询(2秒等待)1.3加强版
 // @namespace    http://tampermonkey.net/
-// @version      1.32
+// @version      1.3
 // @description  每次查询后等待2秒
 // @match        https://tools.usps.com/go/*
 // @grant        GM_setValue
@@ -14,7 +14,7 @@
 
 (function() {
     'use strict';
-    123
+    
     // 配置
     const BATCH_SIZE = 30;
     const DELAY_TIME = 2000; // 2秒等待，load 2秒

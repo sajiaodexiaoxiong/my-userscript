@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         自动批量查询(2秒等待)加强版
 // @namespace    http://tampermonkey.net/
-// @version      0
+// @version      0.1
 // @description  每次查询后等待2秒
 // @match        https://tools.usps.com/go/*
 // @grant        GM_setValue

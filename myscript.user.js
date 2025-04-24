@@ -14,7 +14,7 @@
 
 (function() {
     'use strict';
-    
+    sdafaf
     // 配置
     const BATCH_SIZE = 30;
     const DELAY_TIME = 2000; // 2秒等待，load 2秒

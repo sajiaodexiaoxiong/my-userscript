@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         自动批量查询(2秒等待)威力加强版
+// @name         自动批量查询(随机等待)z fold 7 蓝色 512G
 // @namespace    http://tampermonkey.net/
-// @version      0.2
-// @description  每次查询后等待2秒
+// @version      0.4
+// @description  随机查询
 // @match        https://tools.usps.com/go/*
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -17,7 +17,11 @@
 
     // 配置
     const BATCH_SIZE = 30;
-    const DELAY_TIME = 2000; // 2秒等待，load 2秒
+    const DELAY_TIME = 5000; // 10秒等待，load 2秒
+    const DELAY_START = 1;
+    const DELAY_END = 15;
+    const BATCH_SIZE_START = 1;
+    const BATCH_SIZE_END = 31;
     const TRACKING_INPUT_SELECTOR = '#tracking-input';
     const SEARCH_BUTTON_SELECTOR = '.tracking-btn-srch';
 
@@ -43,7 +47,7 @@
         `;
 
         ui.innerHTML = `
-            <h3 style="margin-top:0;color:#d04349;">自动查询 威力加强版</h3>
+            <h3 style="margin-top:0;color:#d04349;">自动查询 z fold 7 蓝色 512G</h3>
             <input type="file" id="usps-auto-file" accept=".txt" style="width:100%;margin-bottom:10px;">
             <div style="display:flex;gap:10px;margin-bottom:10px;">
                 <button id="usps-auto-start" style="flex:1;padding:8px;background:#d04349;color:white;border:none;border-radius:4px;">开始</button>
@@ -58,10 +62,10 @@
             <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:5px;">
                 <span>待处理: <span id="usps-pending-count">0</span></span>
                 <span>已处理: <span id="usps-processed-count">0</span></span>
-                <span>错误: <span id="usps-error-count">0</span></span>
+                <span>结果: <span id="usps-error-count">0</span></span>
             </div>
             <div id="usps-auto-download-container" style="margin-top:10px;">
-                <button id="usps-auto-download" style="width:100%;padding:8px;background:#28a745;color:white;border:none;border-radius:4px;" disabled>下载错误日志</button>
+                <button id="usps-auto-download" style="width:100%;padding:8px;background:#28a745;color:white;border:none;border-radius:4px;" disabled>下载日志</button>
             </div>
         `;
 
@@ -140,9 +144,9 @@
         GM_setValue('usps_auto_file_uploaded', false);
         GM_setValue('usps_auto_all_numbers', []);
         GM_setValue('usps_auto_pending_numbers', []);
-        GM_setValue('usps_error_tracking_numbers', []);
         GM_setValue('usps_auto_processing', false);
         GM_setValue('usps_firstStart', true);
+		GM_setValue('usps_error_tracking_numbers', []);
 
         updateStatus('等待上传文件...');
         document.getElementById('usps-auto-start').disabled = false;
@@ -162,13 +166,14 @@
             return;
         }
 
-        const batch = pendingTrackingNumbers.slice(0, BATCH_SIZE);
+        var size = getRandom(BATCH_SIZE_START,BATCH_SIZE_END);
+        const batch = pendingTrackingNumbers.slice(0, size);
         updateStatus('正在处理 ' + (allTrackingNumbers.length - pendingTrackingNumbers.length + 1) +
                      '-' + (allTrackingNumbers.length - pendingTrackingNumbers.length + batch.length) +
                      '/' + allTrackingNumbers.length);
 
         // 更新待处理列表
-        pendingTrackingNumbers = pendingTrackingNumbers.slice(BATCH_SIZE);
+        pendingTrackingNumbers = pendingTrackingNumbers.slice(size);
         GM_setValue('usps_auto_pending_numbers', pendingTrackingNumbers);
 
         // 检查错误
@@ -184,8 +189,8 @@
         const button = document.querySelector(SEARCH_BUTTON_SELECTOR);
         if (!input || !button) {
             if (retries > 0) {
-                // 如果没有找到，等待1秒后重试
-                setTimeout(() => waitForElements(batch, retries - 1), 1000);  // 重试3次，每次间隔1秒
+                // 如果没有找到，等待若干秒秒后重试
+                setTimeout(() => waitForElements(batch, retries - 1), getRandom(DELAY_START,DELAY_END)*1000);
                 return;
             } else {
                 // 如果重试次数用尽，刷新页面
@@ -204,13 +209,16 @@
 
         const currentUrl = window.location.href;
         GM_setValue('lastUrl', currentUrl);
+
+
         // 提交查询
-        button.click();
+        //button.click();
+        setTimeout(() => button.click(), getRandom(DELAY_START,DELAY_END)*1000);
+
     }
     // 完成处理
     function finishProcessing() {
         isProcessing = false;
-        GM_setValue('usps_auto_processing', false);
         GM_setValue('usps_auto_processing', false);
         updateStatus('处理完成！');
         document.getElementById('usps-auto-start').disabled = true;
@@ -225,19 +233,49 @@
         firstStart = GM_getValue('usps_firstStart', false);  //如果是第一次加载 页面上已经存在的数据就不要去检测了。
         if(!firstStart)
         {
-            const errorElements = document.querySelectorAll('.red-banner');
+            const errorElements = document.querySelectorAll('.red-banner, .green-banner, .blue-banner');
+			errorTrackingNumbers = GM_getValue('usps_error_tracking_numbers', []);
             errorElements.forEach(errorElement => {
+                let status='红色';
+                if (errorElement.classList.contains('red-banner')) {
+                    status='红色';
+                } else if (errorElement.classList.contains('green-banner')) {
+                     status='绿色';
+                } else if (errorElement.classList.contains('blue-banner')) {
+                     status='蓝色';
+                }
                 const parent = errorElement.closest('.product_summary');
                 const trackingNumber = parent ? parent.querySelector('.tracking-number') : null;
+                const statusEl = parent ? parent.querySelector('h3.banner-header')?.textContent.trim(): null;
+
+                let bannerMessage = null;
+                if (parent) {
+                    if (statusEl === "Expected Delivery Date") {
+                        // 提取 <p class="banner-content"> 的文本
+                        const bannerContent = parent.querySelector('p.banner-content');
+                        bannerMessage = bannerContent ? bannerContent.textContent.replace(/\s+/g, ' ').trim() : null;
+                    } else {
+                        // 默认情况，提取所有 <p> 标签内容
+                        bannerMessage = Array.from(parent.querySelector('h3.banner-header')?.parentElement?.children || []).filter(el => el.tagName === 'P').map(p => p.textContent.replace(/\s+/g, ' ').trim()).join(' ');
+                    }
+                }
+				//const bannerMessage =parent ? Array.from(parent.querySelector('h3.banner-header')?.parentElement?.children || []).filter(el => el.tagName === 'P').map(p => p.textContent.replace(/\s+/g, ' ').trim()).join(' '):null;
                 if (trackingNumber) {
                     const errorTrackingNumber = trackingNumber.textContent.trim();
-                    if (!errorTrackingNumbers.includes(errorTrackingNumber)) {
-                        errorTrackingNumbers.push(errorTrackingNumber);
-                        GM_setValue('usps_error_tracking_numbers', errorTrackingNumbers);
-                    }
+					// 检查是否已存在，避免重复
+					const exist = errorTrackingNumbers.some(obj => obj.trackingNumber === errorTrackingNumber);
+					if (!exist) {
+						errorTrackingNumbers.push({
+							trackingNumber:errorTrackingNumber,
+                            status: status,
+							statusText: statusEl,
+							message: bannerMessage
+						});
+					}
                 }
             });
 
+			GM_setValue('usps_error_tracking_numbers', errorTrackingNumbers);
             // 更新错误计数
             updateErrorCount();
         }
@@ -271,24 +309,107 @@
         if (bar) bar.style.width = percent + '%';
     }
 
-    // 下载错误日志
-    function downloadErrors() {
-        const csvContent = "data:text/csv;charset=utf-8," + errorTrackingNumbers.join("\n");
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement('a');
-        link.setAttribute('href', encodedUri);
-        link.setAttribute('download', 'error_tracking_numbers.csv');
-        document.body.appendChild(link);
-        link.click();
-    }
+	// 下载错误日志（生成 Excel 文件 .xls）
+	function downloadErrors() {
+		const errorMap = GM_getValue('usps_error_tracking_numbers', []);
+		const rows = [["Tracking Number", "Status","StatusText", "Message"]];
+
+		for (const [tn, info] of Object.entries(errorMap)) {
+			rows.push([
+				`="${info.trackingNumber}"`,
+				info.status || "",
+                info.statusText || "",
+				info.message || ""
+			]);
+		}
+
+		// 构建 HTML 表格
+		const tableHtml = `
+			<table border="1">
+				${rows.map(row => `
+					<tr>${row.map(cell => `<td style="white-space:nowrap; width:250px">${String(cell)
+						.replace(/&/g, '&amp;')
+						.replace(/</g, '&lt;')
+						.replace(/>/g, '&gt;')
+						.replace(/"/g, '&quot;')}</td>`).join('')}
+					</tr>
+				`).join('')}
+			</table>
+		`;
+
+		// 构建 Excel 文件格式
+		const html = `
+			<html xmlns:o="urn:schemas-microsoft-com:office:office"
+				xmlns:x="urn:schemas-microsoft-com:office:excel"
+				xmlns="http://www.w3.org/TR/REC-html40">
+				<head>
+					<meta charset="UTF-8">
+					<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+					<x:Name>Sheet1</x:Name>
+					<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+					</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+				</head>
+				<body>${tableHtml}</body>
+			</html>
+		`;
+
+		// 生成 Blob 并下载
+		const blob = new Blob([html], { type: "application/vnd.ms-excel" });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = "tracking_numbers.xls";
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	}
 
     // 页面加载完成后恢复状态
     window.addEventListener('load', function() {
         initUI();
-        setTimeout(restoreState, DELAY_TIME);
+        setTimeout(restoreState, getRandom(DELAY_START,DELAY_END)*1000);
     });
 
+    //清除cookie
+    function clearCookies()
+    {
+        // 获取当前页面的域名
+        var domain = window.location.hostname;
 
+        // 清除当前域下的所有 cookies
+        document.cookie.split(";").forEach(function(c) {
+            var cookieName = c.trim().split("=")[0];
+            document.cookie = cookieName + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=" + domain;
+        });
+
+        // 获取当前时间
+        var currentTime = new Date().getTime();
+        var clearMinute = getRandom(5,10);
+
+        // 计算下次清理时间（当前时间 + 随机的分钟数）
+        var nextClearTime = currentTime + (clearMinute * 60 * 1000);
+
+        // 更新清理时间戳，设置下次清理的时间
+        localStorage.setItem('lastClearedTime', nextClearTime);
+        // 可选：刷新页面，以便重新开始会话
+        location.replace(location.href);
+    }
+
+    function checkCookie()
+    {
+        // 获取当前时间
+        var currentTime = new Date().getTime();
+        // 从 localStorage 获取上次清理的时间
+        var lastClearedTime = localStorage.getItem('lastClearedTime');
+
+        //判断是否需要清理 cookies
+        if (!lastClearedTime || currentTime - lastClearedTime >= 0) {
+            clearCookies();
+        } else {
+            console.log("无需清理 Cookies，等待下次清理");
+        }
+    }
 
     // 检查服务异常
     function checkServiceError() {
@@ -299,12 +420,14 @@
     // 恢复状态
     async function restoreState() {
 
-        if(checkServiceError())
-        {
-            console.log("服务器查询异常...");
-            const currentUrl = GM_getValue('usps_auto_pending_numbers', 'https://www.baidu.com');;
-            location.replace(currentUrl);
-        }
+        checkCookie();
+
+        //if(checkServiceError())
+        //{
+        //    console.log("服务器查询异常...");
+        //    const currentUrl = GM_getValue('usps_auto_pending_numbers', 'https://www.baidu.com');;
+        //    location.replace(currentUrl);
+        //}
 
         fileUploaded = GM_getValue('usps_auto_file_uploaded', false);
         if (fileUploaded) {
@@ -314,7 +437,7 @@
                 firstStart = GM_getValue('usps_firstStart', true);
                 allTrackingNumbers = GM_getValue('usps_auto_all_numbers', []);
                 pendingTrackingNumbers = GM_getValue('usps_auto_pending_numbers', []);
-                errorTrackingNumbers = GM_getValue('usps_error_tracking_numbers', []);
+                errorTrackingNumbers = Object.keys(GM_getValue('usps_error_tracking_numbers', []));
                 updateStatus('已恢复 ' + allTrackingNumbers.length + ' 个跟踪号');
                 document.getElementById('usps-auto-start').disabled = false;
                 document.getElementById('usps-auto-download').disabled = false;
@@ -344,7 +467,7 @@
               status && pendingCount && processedCount && errorCount && progressBar;
 
         if (!allElementsLoaded && retries > 0) {
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise(resolve => setTimeout(resolve, getRandom(DELAY_START,DELAY_END)*1000));
             return await waitForAllElements(retries - 1);
         }
 
@@ -355,5 +478,9 @@
         }
 
         return true;
+    }
+    function getRandom(DELAY_START,DELAY_END)
+    {
+        return Math.floor(Math.random() * (DELAY_END - DELAY_START)) + DELAY_START;
     }
 })();

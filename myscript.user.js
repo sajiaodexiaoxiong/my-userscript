@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         自动批量查询(随机等待)z fold 7 蓝色 512G
+// @name         自动批量查询(2秒等待)z fold 7 蓝色 512G 0.42
 // @namespace    http://tampermonkey.net/
-// @version      0.4
+// @version      0.42
 // @description  随机查询
 // @match        https://tools.usps.com/go/*
 // @grant        GM_setValue
@@ -18,9 +18,9 @@
     // 配置
     const BATCH_SIZE = 30;
     const DELAY_TIME = 5000; // 10秒等待，load 2秒
-    const DELAY_START = 1;
+    const DELAY_START = 5;
     const DELAY_END = 15;
-    const BATCH_SIZE_START = 1;
+    const BATCH_SIZE_START = 20;
     const BATCH_SIZE_END = 31;
     const TRACKING_INPUT_SELECTOR = '#tracking-input';
     const SEARCH_BUTTON_SELECTOR = '.tracking-btn-srch';
@@ -35,7 +35,7 @@
 
     // 初始化UI
     function initUI() {
-        if (document.getElementById('usps-auto-ui')) return;
+        //if (document.getElementById('usps-auto-ui')) return;
 
         const ui = document.createElement('div');
         ui.id = 'usps-auto-ui';
@@ -159,7 +159,12 @@
 
     // 处理下一批
     function processNextBatch() {
-        if (!isProcessing) return;
+        //if (!isProcessing) return;
+        if (!isProcessing)
+        {
+            updateCounts();
+            return;
+        }
 
         if (pendingTrackingNumbers.length === 0) {
             finishProcessing();
@@ -210,10 +215,10 @@
         const currentUrl = window.location.href;
         GM_setValue('lastUrl', currentUrl);
 
-
+        clearCookies1();
         // 提交查询
-        //button.click();
-        setTimeout(() => button.click(), getRandom(DELAY_START,DELAY_END)*1000);
+        button.click();
+        //setTimeout(() => button.click(), getRandom(1,5)*1000);
 
     }
     // 完成处理
@@ -368,7 +373,7 @@
     // 页面加载完成后恢复状态
     window.addEventListener('load', function() {
         initUI();
-        setTimeout(restoreState, getRandom(DELAY_START,DELAY_END)*1000);
+        setTimeout(restoreState, getRandom(10,15)*1000);
     });
 
     //清除cookie
@@ -385,7 +390,7 @@
 
         // 获取当前时间
         var currentTime = new Date().getTime();
-        var clearMinute = getRandom(5,10);
+        var clearMinute = getRandom(3,5);
 
         // 计算下次清理时间（当前时间 + 随机的分钟数）
         var nextClearTime = currentTime + (clearMinute * 60 * 1000);
@@ -394,6 +399,18 @@
         localStorage.setItem('lastClearedTime', nextClearTime);
         // 可选：刷新页面，以便重新开始会话
         location.replace(location.href);
+    }
+
+	function clearCookies1()
+    {
+        // 获取当前页面的域名
+        var domain = window.location.hostname;
+
+        // 清除当前域下的所有 cookies
+        document.cookie.split(";").forEach(function(c) {
+            var cookieName = c.trim().split("=")[0];
+            document.cookie = cookieName + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=" + domain;
+        });
     }
 
     function checkCookie()
@@ -420,8 +437,7 @@
     // 恢复状态
     async function restoreState() {
 
-        checkCookie();
-
+		//checkCookie();
         //if(checkServiceError())
         //{
         //    console.log("服务器查询异常...");
@@ -439,6 +455,12 @@
                 pendingTrackingNumbers = GM_getValue('usps_auto_pending_numbers', []);
                 errorTrackingNumbers = Object.keys(GM_getValue('usps_error_tracking_numbers', []));
                 updateStatus('已恢复 ' + allTrackingNumbers.length + ' 个跟踪号');
+                var startButton = document.getElementById('usps-auto-start');
+                var downloadButton = document.getElementById('usps-auto-download');
+                if(startButton==null || downloadButton==null)
+                {
+                    location.replace(location.href);
+                }
                 document.getElementById('usps-auto-start').disabled = false;
                 document.getElementById('usps-auto-download').disabled = false;
                 processNextBatch();
@@ -463,9 +485,9 @@
         const input = document.querySelector(TRACKING_INPUT_SELECTOR);
         const button = document.querySelector(SEARCH_BUTTON_SELECTOR);
 
-        const allElementsLoaded = input && button && uiContainer && fileInput && startButton && resetButton && downloadButton &&
-              status && pendingCount && processedCount && errorCount && progressBar;
+        const allElementsLoaded = input && button && uiContainer && fileInput && startButton && resetButton && downloadButton && status && pendingCount && processedCount && errorCount && progressBar;
 
+		//const allElementsLoaded = input && button
         if (!allElementsLoaded && retries > 0) {
             await new Promise(resolve => setTimeout(resolve, getRandom(DELAY_START,DELAY_END)*1000));
             return await waitForAllElements(retries - 1);
